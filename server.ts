@@ -14,39 +14,55 @@ async function startServer() {
   // Increase payload limit for audio files
   app.use(express.json({ limit: '50mb' }));
 
+  // Health Check
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      env: { 
+        hasApiKey: !!process.env.GEMINI_API_KEY,
+        nodeEnv: process.env.NODE_ENV 
+      } 
+    });
+  });
+
   // API Routes
-  app.post("/api/extract-cue-card", async (req, res) => {
+  app.post("/api/extract-cue-card", async (req, res, next) => {
     try {
       console.log("Received OCR request...");
-      const { image } = req.body;
+      const { image, mimeType } = req.body;
       if (!image) {
-        console.error("Missing image in payload");
         return res.status(400).json({ error: "Image required" });
       }
-      const data = await extractCueCard(image);
+      const data = await extractCueCard(image, mimeType || "image/png");
       console.log("OCR success");
       res.json(data);
     } catch (error) {
-      console.error("OCR Error in server:", error);
-      res.status(500).json({ error: "Failed to extract cue card", details: error instanceof Error ? error.message : "Unknown error" });
+      next(error);
     }
   });
 
-  app.post("/api/evaluate-audio", async (req, res) => {
+  app.post("/api/evaluate-audio", async (req, res, next) => {
     try {
       console.log("Received Evaluation request...");
       const { audio, mimeType } = req.body;
       if (!audio) {
-        console.error("Missing audio in payload");
         return res.status(400).json({ error: "Audio required" });
       }
       const data = await evaluateAudioFile(audio, mimeType);
       console.log("Evaluation success");
       res.json(data);
     } catch (error) {
-      console.error("Evaluation Error in server:", error);
-      res.status(500).json({ error: "Failed to evaluate audio", details: error instanceof Error ? error.message : "Unknown error" });
+      next(error);
     }
+  });
+
+  // Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Internal Server Error:", err);
+    res.status(500).json({ 
+      error: "Internal Server Error", 
+      details: err instanceof Error ? err.message : String(err) 
+    });
   });
 
   // Vite middleware for development

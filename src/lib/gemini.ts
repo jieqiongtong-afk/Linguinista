@@ -1,12 +1,12 @@
-export async function extractCueCard(base64Image: string) {
+export async function extractCueCard(base64Image: string, mimeType: string = "image/png") {
   const response = await fetch("/api/extract-cue-card", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: base64Image }),
+    body: JSON.stringify({ image: base64Image, mimeType }),
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.details || errorData.error || "Failed to extract cue card");
+    throw new Error(errorData.details || errorData.error || `Server Error (${response.status})`);
   }
   return response.json();
 }

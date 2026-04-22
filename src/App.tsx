@@ -65,8 +65,29 @@ function ScoreBadge({ score }: { score: number }) {
 
 export default function App() {
   const [view, setView] = useState<'practice' | 'analyze'>('practice');
-  
-  // Practice State
+  const [serverStatus, setServerStatus] = useState<{ ok: boolean; hasApiKey: boolean; message?: string }>({ ok: true, hasApiKey: true });
+
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        const resp = await fetch('/api/health');
+        if (!resp.ok) throw new Error();
+        const data = await resp.json();
+        setServerStatus({ 
+          ok: data.status === 'ok', 
+          hasApiKey: data.env.hasApiKey,
+          message: data.env.hasApiKey ? undefined : 'GEMINI_API_KEY is missing on server.'
+        });
+      } catch (err) {
+        setServerStatus({ 
+          ok: false, 
+          hasApiKey: false, 
+          message: 'Backend server unreachable. Make sure you are running in the AI Studio environment.' 
+        });
+      }
+    };
+    checkServer();
+  }, []);
   const { seconds, isRunning, start, stop, reset, formattedTime } = useTimer();
   const [cueCard, setCueCard] = useState<{title: string, preamble: string, instructionLine: string, bulletPoints: string[]} | null>(null);
   const [isProcessingOCR, setIsProcessingOCR] = useState(false);
@@ -95,7 +116,7 @@ export default function App() {
       reader.onloadend = async () => {
         const base64 = (reader.result as string).split(',')[1];
         try {
-          const data = await extractCueCard(base64);
+          const data = await extractCueCard(base64, file.type);
           setCueCard(data);
           setIsProcessingOCR(false);
         } catch (err) {
@@ -191,6 +212,20 @@ export default function App() {
       </nav>
 
       <main className="flex-1 relative overflow-hidden flex flex-col">
+        {(!serverStatus.ok || !serverStatus.hasApiKey) && (
+          <div className="bg-red-500/10 border-b border-red-500/50 px-8 py-3 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-4 h-4 text-red-500" />
+              <p className="text-[10px] font-black text-red-400 underline decoration-red-500/30 decoration-2 underline-offset-4 uppercase tracking-widest leading-none">
+                {serverStatus.message || 'System Connection Issue Detected'}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[8px] font-bold text-red-500/70 uppercase">High Priority FIX REQUIRED</span>
+            </div>
+          </div>
+        )}
         
         <header className="h-16 px-8 border-b border-[#334155] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">
