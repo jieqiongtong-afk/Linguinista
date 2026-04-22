@@ -97,9 +97,10 @@ export default function App() {
         try {
           const data = await extractCueCard(base64);
           setCueCard(data);
+          setIsProcessingOCR(false);
         } catch (err) {
           console.error("OCR Failed", err);
-        } finally {
+          alert(`OCR Error: ${err instanceof Error ? err.message : 'Unknown Error'}`);
           setIsProcessingOCR(false);
         }
       };
@@ -129,17 +130,18 @@ export default function App() {
       const base64 = (reader.result as string).split(',')[1];
       try {
         setAnalysisStep('Reconstructing Transcript...');
-        // We could technically split this into two AI calls for better perceived speed 
-        // but for now we provide clear status updates
         const data = await evaluateAudioFile(base64, selectedFile.type);
         setAnalysisStep('Finalizing Evaluation...');
         setEvaluation(data);
+        setIsAnalyzing(false);
       } catch (err) {
         console.error("Analysis Failed", err);
-        setAnalysisStep('Analysis Failed. Please retry.');
-      } finally {
-        setIsAnalyzing(false);
-        setAnalysisStep('');
+        setAnalysisStep(`Evaluation Error: ${err instanceof Error ? err.message : 'Unknown Error'}`);
+        // Leave message visible for 6 seconds
+        setTimeout(() => {
+          setIsAnalyzing(false);
+          setAnalysisStep('');
+        }, 6000);
       }
     };
     reader.readAsDataURL(selectedFile);
