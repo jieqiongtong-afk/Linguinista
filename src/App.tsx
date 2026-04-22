@@ -68,10 +68,13 @@ export default function App() {
   const [serverStatus, setServerStatus] = useState<{ ok: boolean; hasApiKey: boolean; message?: string }>({ ok: true, hasApiKey: true });
 
   useEffect(() => {
+    let retries = 0;
+    const maxRetries = 5;
+    
     const checkServer = async () => {
       try {
         const resp = await fetch('/api/health');
-        if (!resp.ok) throw new Error();
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         setServerStatus({ 
           ok: data.status === 'ok', 
@@ -79,11 +82,17 @@ export default function App() {
           message: data.env.hasApiKey ? undefined : 'GEMINI_API_KEY is missing on server.'
         });
       } catch (err) {
-        setServerStatus({ 
-          ok: false, 
-          hasApiKey: false, 
-          message: 'Backend server unreachable. Make sure you are running in the AI Studio environment.' 
-        });
+        console.warn(`Health check failed (attempt ${retries + 1}/${maxRetries})`, err);
+        if (retries < maxRetries) {
+          retries++;
+          setTimeout(checkServer, 2000); // Retry every 2 seconds
+        } else {
+          setServerStatus({ 
+            ok: false, 
+            hasApiKey: false, 
+            message: 'Connection failed after multiple retries. The server might still be booting or the configuration is invalid.' 
+          });
+        }
       }
     };
     checkServer();
