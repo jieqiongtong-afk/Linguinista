@@ -1,0 +1,13 @@
+{
+  "name": "Linguinista",
+  "description": "Real-time IELTS speaking teaching assistant with live transcription, automated timers, and AI-powered feedback.",
+  "requestFramePermissions": [
+    "microphone",
+    "display-capture"
+  ],
+  "majorCapabilities": [
+    "Audio recording",
+    "Real-time transcription",
+    "AI evaluation"
+  ]
+}
